@@ -1,5 +1,5 @@
 /* =====================================================================
- * instructions.h
+ * instructions.c
  * provides standard routines for SH4A cpu instructions
  * 
  * Copyright 2011 Jack Moore (z80man) Omnimaga CoT Team
@@ -22,6 +22,8 @@
  * MA 02110-1301, USA.
  * ===================================================================*/
  
+ #include "registers.h"
+
  //declare registers used in registers.h
  extern unsigned long R[16];
  extern unsigned long SR, GBR, VBR;
@@ -33,6 +35,8 @@
  void updateSR();
  
  unsigned long tmp0, tmp1;
+ long dest, src, ans;
+ unsigned int temp;
  
  //SH4A instruction prototypes
  void ADD(unsigned long m, unsigned long n);    //ADD Rm, Rn
@@ -42,8 +46,15 @@
  void AND(unsigned long m, unsigned long n);    //AND Rm, Rn
  void ANDI(unsigned long i);                    //AND #imm, R0
  void ANDM(unsigned long i);                    //AND.B #imm, @(R0, GBR)
- void BF(unsigned long d);                      //BF label
- void BFSunsigned long d);                      //BF/S label
+ void BF(unsigned long d);                      //BF Label
+ void BFS(unsigned long d);                     //BF/S Label
+ void BRA(unsigned long d);                     //BRA Label
+ void BRAF(unsigned long n);                    //BRAF Rn
+ void BT(unsigned long d);                      //BT Label
+ void BTS(unsigned long d);                     //BTS Label
+ void CLRMAC();                                 //CLRMAC
+ void CLRS();                                   //CLRS
+ void CLRT();                                   //CLRT
  
  //instruction code 
  void ADD(unsigned long m, unsigned long n) //ADD Rm, Rn
@@ -73,7 +84,6 @@
  
  void ADDV(unsigned long m, unsigned long n) //ADDV Rm, Rn
  {
-	long dest,src,ans;
 	if ((long)R[n]>=0) dest = 0;
 	else dest = 1;
 	if ((long)R[m]>=0) src = 0;
@@ -112,14 +122,166 @@
  
  void BF(unsigned long d) //BF Label
  {
-	 if (T == 0) PC += 4 + (d << 1);
-	 else PC += 2;
+	if ((d&0x80)==0)
+	disp = (0x000000FF & d);
+	else
+	disp = (0xFFFFFF00 | d);
+	if (T==0)
+	PC = PC+4+(disp<<1);
+	else
+	PC += 2;
  }
  
  void BFS(unsigned long d) //BF/S Label
  {
- 	
+	temp = PC;
+	if ((d&0x80)==0)
+	disp = (0x000000FF & d);
+	else
+	disp = (0xFFFFFF00 | d);
+	if (T==0)
+	PC = PC + 4 + (disp<<1);
+	else PC += 4;
+	Delay_Slot(temp+2);
  }
+ 
+ void BRA(unsigned long d) //BRA Label
+ {
+	temp = PC;
+	if ((d&0x800)==0)
+	disp = (0x00000FFF & d);
+	else
+	disp = (0xFFFFF000 | d);
+	PC = PC + 4 + (disp<<1);
+	Delay_Slot(temp+2);
+ }
+ 
+ void BRAF(unsigned long n) //BRAF Rn
+ {
+	temp = PC;
+	PC = PC + 4 + R[n];
+	Delay_Slot(temp+2);
+ }
+ 
+ void BT(unsigned long d) //BT Label
+ {
+	if ((d&0x80)==0)
+	disp = (0x000000FF & d);
+	else disp = (0xFFFFFF00 | d);
+	if (T==1)
+	PC = PC + 4 + (disp<<1);
+	else PC += 2;
+ }
+ 
+ void BTS(unsigned long d) //BTS Label
+ {
+	temp = PC;
+	if ((d&0x80)==0)
+	disp = (0x000000FF & d);
+	else disp = (0xFFFFFF00 | d);
+	if (T==1)
+	PC = PC + 4 + (disp<<1);
+	else PC += 4;
+	Delay_Slot(temp+2);
+ }
+ 
+ void CLRMAC() //CLRMAC
+ {
+	MACL = MACH = 0;
+	PC += 2;
+ }
+ 
+ void CLRS() //CLRS
+ {
+	S = 0;
+	PC += 2;
+ }
+ 
+ CMPEQ(unsigned long m, unsigned long n) //CMP_EQ Rm,Rn
+ {
+	if (R[n]==R[m]) T = 1;
+	else T = 0;
+	PC += 2;
+ }
+ 
+ CMPGE(long m, long n) //CMP_GE Rm,Rn
+ {
+	if ((long)R[n]>=(long)R[m]) T = 1;
+	else T = 0;
+	PC += 2;
+ }
+ 
+ CMPGT(long m, long n) //CMP_GT Rm,Rn
+ {
+	if ((long)R[n]>(long)R[m]) T = 1;
+	else T = 0;
+	PC += 2;
+ }
+
+ 
+ void CLRT() //CLRT
+ {
+	 T = 0;
+	 PC += 2;
+ }
+ 
+ CMPHI(long m, long n) //CMP_HI Rm,Rn
+ {
+	if ((unsigned long)R[n]>(unsigned long)R[m]) T = 1;
+	else T = 0;
+	PC += 2;
+ }
+
+ CMPHS(long m, long n) //CMP_HS Rm,Rn
+ {
+	if ((unsigned long)R[n]>=(unsigned long)R[m]) T = 1;
+	else T = 0;
+	PC += 2;
+ }
+CMPPL(long n)
+/* CMP_PL Rn */
+{
+if ((long)R[n]>0) T = 1;
+else T = 0;
+PC += 2;
+}
+CMPPZ(long n)
+/* CMP_PZ Rn */
+{
+if ((long)R[n]>=0) T = 1;
+else T = 0;
+PC += 2;
+}
+CMPSTR(long m, long n)
+{
+unsigned long temp;
+long HH,HL,LH,LL;
+temp=R[n]^R[m];
+HH = (temp & 0xFF000000) >> 24;
+HL = (temp & 0x00FF0000) >> 16;
+LH = (temp & 0x0000FF00) >> 8;
+LL = temp & 0x000000FF;
+HH = HH && HL && LH && LL;
+if (HH==0) T = 1;
+else T = 0;
+PC += 2;
+}
+CMPIM(long i)
+/* CMP_EQ #imm,R0 */
+{
+long imm;
+if ((i&0x80)==0) imm=(0x000000FF & (long i));
+else imm=(0xFFFFFF00 | (long i));
+if (R[0]==imm) T = 1;
+else T = 0;
+PC += 2;
+}
+
+ 
+
+
+
+
 		
 	 
 		
