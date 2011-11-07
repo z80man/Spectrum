@@ -1,4 +1,3 @@
-
 /* =====================================================================
  * instructions.h
  * provides standard routines for SH4A cpu instructions
@@ -43,16 +42,17 @@
  void AND(unsigned long m, unsigned long n);    //AND Rm, Rn
  void ANDI(unsigned long i);                    //AND #imm, R0
  void ANDM(unsigned long i);                    //AND.B #imm, @(R0, GBR)
- void BF(unsigned d);                           //BF label
+ void BF(unsigned long d);                      //BF label
+ void BFSunsigned long d);                      //BF/S label
  
  //instruction code 
- void ADD(long m, long n) //ADD Rm, Rn
+ void ADD(unsigned long m, unsigned long n) //ADD Rm, Rn
  {
 	 R[n] += R[n];
 	 PC += 2;
  }   
 
- void ADDI(long i, long n) //ADD #imm, Rn
+ void ADDI(unsigned long i, unsigned long n) //ADD #imm, Rn
  {
 	 if (i >= 0)
 		R[n] += i;
@@ -60,7 +60,7 @@
 	 PC += 2;
  }
  
- void ADDC(long m, long n) //ADDC Rm, Rn
+ void ADDC(unsigned long m, unsigned long n) //ADDC Rm, Rn
  {
 	tmp1 = R[n] + R[m];
 	tmp0 = R[n];
@@ -71,7 +71,7 @@
 	PC += 2;
  }
  
- void ADDV(long m, long n) //ADDV Rm, Rn
+ void ADDV(unsigned long m, unsigned long n) //ADDV Rm, Rn
  {
 	long dest,src,ans;
 	if ((long)R[n]>=0) dest = 0;
@@ -92,31 +92,34 @@
 	PC += 2;
  }
  
- void AND(long m, long n) //AND Rm, Rn
+ void AND(unsigned long m, unsigned long n) //AND Rm, Rn
  {
 	 R[n] &= R[m];
 	 PC += 2;
  }
  
- void ANDI(long i) //AND #imm, R0
+ void ANDI(unsigned long i) //AND #imm, R0
  {
 	 R[0] &= i;
 	 PC += 2;
  }
 
- void ANDM(long i) //AND.B #imm, @(R0, GBR)
+ void ANDM(unsigned long i) //AND.B #imm, @(R0, GBR)
  {
 	 Write_Byte(GBR + R[0], (unsigned char)i & ReadByte(GBR + R[0]))
 	 PC += 2;
  }
  
- void BF(int d) //BF disp
+ void BF(unsigned long d) //BF Label
  {
 	 if (T == 0) PC += 4 + (d << 1);
 	 else PC += 2;
  }
  
- void BFS
+ void BFS(unsigned long d) //BF/S Label
+ {
+ 	
+ }
 		
 	 
 		
