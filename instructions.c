@@ -24,43 +24,68 @@
  
  #include "registers.h"
  #include "instructions.h"  //todo : will contain below referenced global variables and prototypes
+ #include "memory.h"        //todo : will contain prototypes for memory functions
 
- 
- //bits of SR updated with updateSR()
- extern unsigned long T, M, S, Q;
- void updateSR();
- 
- unsigned long tmp0, tmp1;
+  
+ unsigned long tmp0, tmp1, tmp2;
+ unsigned long long tmp64;
  long dest, src, ans, imm;
  unsigned int temp;
  unsigned long HH,HL,LH,LL;
+ unsigned char old_q;
  
  //SH4A instruction prototypes
- void ADD(unsigned long m, unsigned long n);    //ADD Rm, Rn
- void ADDI(unsigned long i, unsigned long n);   //ADD #imm, Rn
- void ADDC(unsigned long m, unsigned long n);   //ADDC Rm, Rn
- void ADDV(unsigned long m, unsigned long n);   //ADDV Rm, Rn
- void AND(unsigned long m, unsigned long n);    //AND Rm, Rn
- void ANDI(unsigned long i);                    //AND #imm, R0
- void ANDM(unsigned long i);                    //AND.B #imm, @(R0, GBR)
- void BF(unsigned long d);                      //BF Label
- void BFS(unsigned long d);                     //BF/S Label
- void BRA(unsigned long d);                     //BRA Label
- void BRAF(unsigned long n);                    //BRAF Rn
- void BT(unsigned long d);                      //BT Label
- void BTS(unsigned long d);                     //BTS Label
- void CLRMAC();                                 //CLRMAC
- void CLRS();                                   //CLRS
- void CLRT();                                   //CLRT
- void CMPEQ(unsigned long m, unsigned long n);  //CMP_EQ Rm, Rn
- void CMPGE(unsigned long m, unsigned long n);  //CMP_GE Rm, Rn
- void CMPGT(unsigned long m, unsigned long n);  //CMP_GT Rm, Rn
- void CMPHI(unsigned long m, unsigned long n);  //CMP_HI Rm, Rn
- void CMPHS(unsigned long m, unsigned long n);  //CMP_HS Rm, Rn
- void CMPIM(unsigned long i);                   //CMP_EQ #imm,R0
- void CMPPL(unsigned long n);                   //CMP_PL Rn
- void CMPPZ(unsigned long n);                   //CMP_PZ Rn
- void CMPSTR(unsigned long m, unsigned long n); //CMP_STR Rm, Rn
+ void ADD(unsigned long m, unsigned long n);        //ADD Rm, Rn
+ void ADDI(unsigned long i, unsigned long n);       //ADD #imm, Rn
+ void ADDC(unsigned long m, unsigned long n);       //ADDC Rm, Rn
+ void ADDV(unsigned long m, unsigned long n);       //ADDV Rm, Rn
+ void AND(unsigned long m, unsigned long n);        //AND Rm, Rn
+ void ANDI(unsigned long i);                        //AND #imm, R0
+ void ANDM(unsigned long i);                        //AND.B #imm, @(R0, GBR)
+ void BF(unsigned long d);                          //BF Label
+ void BFS(unsigned long d);                         //BF/S Label
+ void BRA(unsigned long d);                         //BRA Label
+ void BRAF(unsigned long n);                        //BRAF Rn
+ void BT(unsigned long d);                          //BT Label
+ void BTS(unsigned long d);                         //BTS Label
+ void CLRMAC();                                     //CLRMAC
+ void CLRS();                                       //CLRS
+ void CLRT();                                       //CLRT
+ void CMPEQ(unsigned long m, unsigned long n);      //CMP_EQ Rm, Rn
+ void CMPGE(unsigned long m, unsigned long n);      //CMP_GE Rm, Rn
+ void CMPGT(unsigned long m, unsigned long n);      //CMP_GT Rm, Rn
+ void CMPHI(unsigned long m, unsigned long n);      //CMP_HI Rm, Rn
+ void CMPHS(unsigned long m, unsigned long n);      //CMP_HS Rm, Rn
+ void CMPIM(unsigned long i);                       //CMP_EQ #imm,R0
+ void CMPPL(unsigned long n);                       //CMP_PL Rn
+ void CMPPZ(unsigned long n);                       //CMP_PZ Rn
+ void CMPSTR(unsigned long m, unsigned long n);     //CMP_STR Rm, Rn
+ void DIV0S(unsigned long m, unsigned long n);      //DIV0S Rm, Rn
+ void DIV0U();                                      //DIV0U
+ void DIV1(unsigned long m, unsigned long n);       //DIV1 Rm, Rn
+ void DMULS(unsigned long m, unsigned long n);      //DMULS.L Rm, Rn
+ void DMULU(unsigned long m, unsigned long n);      //DMULU.L Rm, Rn
+ void DT(unsigned long n);                          //DT Rn
+ void EXTSB(unsigned long m, unsigned long n);      //EXTS.B Rm, Rn
+ void EXTSW(unsigned long m, unsigned long n);      //EXTS.W Rm, Rn
+ void EXTUB(unsigned long m, unsigned long n);      //EXTU.B Rm, Rn
+ void EXTUW(unsigned long m, unsigned long n);      //EXTU.W Rm, Rn
+ void ICBI(unsigned long n);                        //ICBI @Rn
+ void JMP(unsigned long n);                         //JMP @Rn
+ void LDCGBR(unsigned long m);                      //LDC Rm, GBR
+ void LDCVBR(unsigned long m);                      //LDC Rm, VBR
+ void LDCSGR(unsigned long m);                      //LDC Rm, SGR
+ void LDCSSR(unsigned long m);                      //LDC Rm, SSR
+ void LDCSPC(unsigned long m);                      //LDC Rm, SPC
+ void LDCDBR(unsigned long m);                      //LDC Rm, DBR
+ void LDC_BANK(unsigned long m, unsigned long n);   //LDC Rm, Rn_BANK
+ void LDCMGBR(unsigned long m);                     //LDC.L @Rm+, GBR
+ void LDCMVBR(unsigned long m);                     //LDC.L @Rm+, VBR
+ void LDCMSGR(unsigned long m);                     //LDC.L @Rm+, SGR
+ void LDCMSSR(unsigned long m);                     //LDC.L @Rm+, SSR
+ void LDCMSPC(unsigned long m);                     //LDC.L @Rm+, SPC
+ void LDCMDBR(unsigned long m);                     //LDC.L @Rm+, DBR
+ void LDCM_BANK(unsigned long m, unsigned long n);  //LDC.L @Rm+, Rn_BANK
  
  //instruction code 
  void ADD(unsigned long m, unsigned long n) //ADD Rm, Rn  //add Rm and Rn into Rn; unsigned and signed data
@@ -280,6 +305,243 @@
 	PC += 2;
  }
 
+ void DIV0S(unsigned long m, unsigned long n)  //DIV0S Rm, Rn  : initialization of signed division
+ {
+	if ((R[n] & 0x80000000)==0) Q = 0;
+	else Q = 1;
+	if ((R[m] & 0x80000000)==0) M = 0;
+	else M = 1;
+	T = !(M==Q);
+	PC += 2;
+ }
+ 
+ void DIV0U ()  //DIV0U  : initialization of unsigned division
+ {
+	M = Q = T = 0;
+	PC += 2;
+ }
+ 
+ void DIV1(unsigned long m, unsigned long n) //DIV1 Rm, Rn  : single step division; sign set by either DIV0U or DIV0S
+ {
+	static unsigned char tmp1;
+	old_q = Q;
+	Q = (unsigned char)((0x80000000 & R[n])!=0);
+	tmp2 = R[m];
+	R[n] <<= 1;
+	R[n] |= (unsigned long)T;
+	switch(old_q){
+	case 0:switch(M){
+		case 0:tmp0 = R[n];
+			R[n] -= tmp2;
+			tmp1 = (R[n]>tmp0);
+			switch(Q){
+			case 0:Q = tmp1;
+				break;
+			case 1:Q = (unsigned char)(tmp1==0);
+				break;
+			}
+			break;
+		case 1:tmp0 = R[n];
+			R[n] += tmp2;
+			tmp1 = (R[n]<tmp0);
+			switch(Q){
+			case 0:Q = (unsigned char)(tmp1==0);
+				break;
+			case 1:Q = tmp1;
+				break;
+			}
+			break;
+		}
+		break;
+	case 1:switch(M){
+		case 0:tmp0 = R[n];
+			R[n] += tmp2;
+			tmp1 = (R[n]<tmp0);
+			switch(Q){
+			case 0:Q = tmp1;
+				break;
+			case 1:Q = (unsigned char)(tmp1==0);
+				break;
+			}
+			break;
+		case 1:tmp0 = R[n];
+			R[n] -= tmp2;
+			tmp1 = (R[n]>tmp0);
+			switch(Q){
+			case 0:Q = (unsigned char)(tmp1==0);
+				break;
+			case 1:Q = tmp1;
+				break;
+			}
+			break;
+		}
+		break;
+	}
+	T = (Q==M);
+	PC += 2;
+ }
+ 
+ void DMULS (unsigned long m, unsigned long n)  //DMULS.L Rm, Rn  : 32 bit * 32 bit = 64 bit signed multiplication
+ {
+	tmp64 = (long long)R[m] * (long long)R[n];  //64 bit signed casting
+	MACL = tmp64 & 0x00000000ffffffffLL;
+	MACH = tmp64 >> 32;
+	PC += 2;
+ }
+ 
+ void DMULU (unsigned long m, unsigned long m)  //DMULU.L Rm, Rn  : 32 bit * 32 bit = 64 bit unsigned multiplication
+ {
+	tmp64 = (unsigned long long)R[m] * (unsigned long long)R[n];  //64 bit unsigned casting
+	MACL = tmp64 & 0x00000000ffffffffLL;  //lowercase l looks to much like a 1 imho
+	MACH = tmp64 >> 32;
+	PC += 2;
+ }
+ 
+ void DT (unsigned long n)  //DT Rn  : decrement and test if 0
+ {
+	--R[n];  //prefix decrement optimization ftw!!
+	if (R[n] == 0) T = 1;
+	else T = 0;
+	PC += 2;
+ }
+ 
+ void EXTSB (unsigned long m, unsigned long n)  //EXTS.B Rm, Rn  : type cast Rm to signed byte and write to Rn
+ {
+	R[n] = (unsigned long)(char)(((long)R)[m]);  //pointer to signed long; result to signed char to unsigned long
+	PC += 2;
+ }
+ 
+ void EXTSW (unsigned long m, unsigned long n)  //EXTS.W Rm, Rn  : type cast Rm to signed word and write to Rn
+ {
+	R[n] = (unsigned long)(short)(((long)R)[m]);  //pointer to signed long; result to signed short to unsigned long
+	PC += 2;
+ }
+ 
+ void EXTUB (unsigned long m, unsigned long n)  //EXTU.B Rm, Rn  : type cast Rm to unsigned byte and write to Rn
+ {
+	R[n] = (unsigned long)(unsigned char)R[m];  //to unsigned char then type cast back to register
+	PC += 2;
+ }
+ 
+ void EXTUW (unsigned long m, unsigned long n)  //EXTU.W Rm, Rn  : type cast Rm to unsigned word and write to Rn
+ {
+	R[n] = (unsigned long)(unsigned short)R[m];  //to unsigned short then type cast back to register
+	PC += 2;
+ }
+ 
+ void ICBI (unsigned long n)  //ICBI @Rn  : invalidiate instruction cache @Rn; does nothing in this context as cache is disabled in standard mode
+ {
+	PC += 2;  //aka NOP
+ }
+ 
+ void JMP (unsigned long n)  //JMP @Rn  : jump with delay branch to Rn
+ {
+	temp = PC;
+	PC = R[n];
+	Delay_Slot(temp + 2);
+ }
+ 
+ void LDCGBR (unsigned long m)  //LDC Rm, GBR  : load Rm into GBR  : Global Base Register
+ {
+	GBR = R[m];
+	PC += 2;
+ }
+ 
+ void LDCVBR (unsigned long m)  //LDC Rm, VBR  : load Rm into VBR  : Vector Base Register; ignore privileged status
+ {
+	VBR = R[m];
+	PC += 2;
+ }
+ 
+ void LDCSGR (unsigned long m)  //LDC Rm, SGR  : load Rm into SGR  : saved stack pointer; ignore privileged status
+ {
+	SGR = R[m];
+	PC += 2;
+ }
+ 
+ void LDCSSR (unsigned long m)  //LDC Rm, SSR  : load Rm into SSR  : Saved Status Register; ignore privileged status
+ {
+	SSR = R[m];
+	PC += 2;
+ }
+ 
+ void LDCSPC (unsigned long m)  //LDC Rm, SPC  : load Rm into SPC  : Saved Program Counter; ignore privileged status
+ {
+	SPC = R[m];
+	PC += 2;
+ }
+ 
+ void LDCDBR (unsigned long m)  //LDC Rm, DBR  : load Rm into DBR  : Debug Base Register; ignore privileged status
+ {
+	DBR = R[m];
+	PC += 2;
+ }
+ 
+ void LDC_BANK (unsigned long m, unsigned long n)  //LDC Rm, Rn_BANK  : load Rm into Rn_BANK; ignore privileged status
+ {
+	R_bank[n] = R[m];  //may need to separate into 8 functions for consistency with decoder
+	PC += 2;
+ }
+ 
+ void LDCMGBR (unsigned long m)  //LDC.L @Rm+, GBR  : pop what is @Rm and into the GBR
+ {
+	GBR = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDCMVBR (unsigned long m)  //LDC.L @Rm+, VBR  : pop what is @Rm and into the VBR; ignore privileged status
+ {
+	VBR = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDCMSGR (unsigned long m)  //LDC.L @Rm+, SGR  : pop what is @Rm and into the SGR; ignore privileged status
+ {
+	SGR = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDCMSSR (unsigned long m)  //LDC.L @Rm+, SSR  : pop what is @Rm and into the SSR; ignore privileged status
+ {
+	SSR = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDCMSPC (unsigned long m)  //LDC.L @Rm+, SPC  : pop what is @Rm and into the SPC; ignore privileged status
+ {
+	SPC = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDCMDBR (unsigned long m) //LDC.L @Rm+, DBR  : pop what is @Rm and into the DBR; ignore privileged status
+ {
+	DBR = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDCM_BANK (unsigned long m, unsigned long n)  //LDC.L @Rm+, Rn_BANK  : pop what is @Rm and into Rn_BANK; ignore privileged status
+ {
+	R_Bank[n] = Read_Long(R[m]);  //may need to separate into 8 functions for consistency with decoder
+	R[m] += 4;
+	PC += 2;
+ }
+	
+   
+ 
+ 
+	
+
+
+
+
+ 
+ 
  
 
  
