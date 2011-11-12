@@ -23,7 +23,7 @@
  * ===================================================================*/
  
  unsigned long R[16];
- unsigned long SR, GBR, VBR;
+ unsigned long SR, GBR, VBR, SGR, SPC, SSR;
  unsigned long MACH, MACL, PR;
  unsigned long PC;
  unsigned long R_Bank[8];
