@@ -86,6 +86,13 @@
  void LDCMSPC(unsigned long m);                     //LDC.L @Rm+, SPC
  void LDCMDBR(unsigned long m);                     //LDC.L @Rm+, DBR
  void LDCM_BANK(unsigned long m, unsigned long n);  //LDC.L @Rm+, Rn_BANK
+ void LDSMACH(unsigned long m);                     //LDS Rm, MACH
+ void LDSMACL(unsigned long m);                     //LDS Rm, MACL
+ void LDSPR(unsigned long m);                       //LDS Rm, PR
+ void LDSMMACH(unsigned long m);                    //LDS.L @Rm+, MACH
+ void LDSMMACL(unsigned long m);                    //LDS.L @Rm+, MACL
+ void LDSMPR(unsigned long m);                      //LDS.L @Rm+, PR
+ void LDTLB();                                      //LDTLB
  
  //instruction code 
  void ADD(unsigned long m, unsigned long n) //ADD Rm, Rn  //add Rm and Rn into Rn; unsigned and signed data
@@ -234,42 +241,42 @@
 	 PC += 2;
  }
  
- CMPEQ(unsigned long m, unsigned long n) //CMP_EQ Rm,Rn  : if Rn is == Rm; unsigned and signed
+ void CMPEQ(unsigned long m, unsigned long n) //CMP_EQ Rm,Rn  : if Rn is == Rm; unsigned and signed
  {
 	if (R[n]==R[m]) T = 1;
 	else T = 0;
 	PC += 2;
  }
  
- CMPGE(unsigned long m, unsigned long n) //CMP_GE Rm,Rn  : if Rn is >= Rm; signed data
+ void CMPGE(unsigned long m, unsigned long n) //CMP_GE Rm,Rn  : if Rn is >= Rm; signed data
  {
 	if ((long)R[n] >= (long)R[m]) T = 1;  //sign type cast
 	else T = 0;
 	PC += 2;
  }
  
- CMPGT(unsigned long m, unsigned long n) //CMP_GT Rm,Rn  : if Rn is > Rm; signed data
+ void CMPGT(unsigned long m, unsigned long n) //CMP_GT Rm,Rn  : if Rn is > Rm; signed data
  {
 	if ((long)R[n] > (long)R[m]) T = 1; //sign type cast
 	else T = 0;
 	PC += 2;
  }
 
- CMPHI(unsigned long m, unsigned long n) //CMP_HI Rm,Rn  : if Rn is > Rm; unsigned data
+ void CMPHI(unsigned long m, unsigned long n) //CMP_HI Rm,Rn  : if Rn is > Rm; unsigned data
  {
 	if (R[n] > R[m]) T = 1;  //no type cast due to unsigned default
 	else T = 0;
 	PC += 2;
  }
 
- CMPHS(unsigned long m, unsigned long n) //CMP_HS Rm,Rn  : if Rn is >= Rm; unsigned data
+ void CMPHS(unsigned long m, unsigned long n) //CMP_HS Rm,Rn  : if Rn is >= Rm; unsigned data
  {
 	if (R[n] >= R[m]) T = 1;  //no type cast due to unsigned default
 	else T = 0;
 	PC += 2;
  }
  
- CMPIM(unsigned long i) //CMP_EQ #imm,R0  : if immediate is equal to R0; signed data
+ void CMPIM(unsigned long i) //CMP_EQ #imm,R0  : if immediate is equal to R0; signed data
  {
 	if ((i&0x80)==0) imm=(0x000000FF & (long i));
 	else imm=(0xFFFFFF00 | (long i));
@@ -278,21 +285,21 @@
 	PC += 2;
  }
 
- CMPPL(unsigned long n) //CMP_PL Rn  : if Rn > 0; signed data
+ void CMPPL(unsigned long n) //CMP_PL Rn  : if Rn > 0; signed data
  {
 	if ((long)R[n]>0) T = 1;  //sign type cast
 	else T = 0;
 	PC += 2;
  }
 
- CMPPZ(unsigned long n) //CMP_PZ Rn  : if Rn >= 0; signed data
+ void CMPPZ(unsigned long n) //CMP_PZ Rn  : if Rn >= 0; signed data
  {
 	if ((long)R[n]>=0) T = 1;  //sign type cast
 	else T = 0;
 	PC += 2;
  }
  
- CMPSTR(unsigned long m, unsigned long n) //CMP_STR Rm,Rn  : if a byte of Rn is == a byte of Rm; unsigned and signed data
+ void CMPSTR(unsigned long m, unsigned long n) //CMP_STR Rm,Rn  : if a byte of Rn is == a byte of Rm; unsigned and signed data
  {
 	temp=R[n]^R[m];
 	HH = (temp & 0xFF000000) >> 24;
@@ -383,17 +390,17 @@
  
  void DMULS (unsigned long m, unsigned long n)  //DMULS.L Rm, Rn  : 32 bit * 32 bit = 64 bit signed multiplication
  {
-	tmp64 = (long long)R[m] * (long long)R[n];  //64 bit signed casting
-	MACL = tmp64 & 0x00000000ffffffffLL;
-	MACH = tmp64 >> 32;
+	tmp64 = (unsigned long long)((long long)R[m] * (long long)R[n]);  //64 bit signed casting
+	*MACL = tmp64 & 0x00000000ffffffffLL;
+	*MACH = tmp64 >> 32;
 	PC += 2;
  }
  
  void DMULU (unsigned long m, unsigned long m)  //DMULU.L Rm, Rn  : 32 bit * 32 bit = 64 bit unsigned multiplication
  {
 	tmp64 = (unsigned long long)R[m] * (unsigned long long)R[n];  //64 bit unsigned casting
-	MACL = tmp64 & 0x00000000ffffffffLL;  //lowercase l looks to much like a 1 imho
-	MACH = tmp64 >> 32;
+	*MACL = tmp64 & 0x00000000ffffffffLL;  //lowercase l looks to much like a 1 imho
+	*MACH = tmp64 >> 32;
 	PC += 2;
  }
  
@@ -531,25 +538,64 @@
 	R[m] += 4;
 	PC += 2;
  }
-	
-   
+ 
+ void LDSMACH (unsigned long m)  //LDS Rm, MACH  : load Rm into the MACH
+ {
+	*MACH = R[m];
+	PC += 2;
+ }
+ 
+ void LDSMACL (unsigned long m)  //LDS Rm, MACL  : load Rm into the MACL
+ {
+	*MACL = R[m];
+	PC += 2;
+ }
+ 
+ void LDSPR (unsigned long m)  //LDS Rm, PR  : load Rm into the PR; Procedure Register
+ {
+	PR = R[m];
+	PC += 2;
+ }
+ 
+ void LDSMMACH (unsigned long m)  //LDS.L @Rm+, MACH  : pop what is @Rm and into the MACH
+ {
+	*MACH = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDSMMACL (unsigned long m)  //LDS.L @Rm+, MACL  : pop what is @Rm and into the MACL
+ {
+	*MACL = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDSMPR (unsigned long m)  //LDS.L @Rm+, PR  : pop what is @Rm and into the PR
+ {
+	PR = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
+ void LDTLB ()  //LDTLB  : why don't we just pretend that this instruction doesn't exist for the time being
+ {
+	PC += 2;  //at least it's pretty well optimized now :P
+ }
+ 
+ void MACL (unsigned long m, unsigned long n)  //MAC.L @Rm+, @Rn+  : pop 32 bit * pop 32 bit = 64 bit if S == 0 else 48 bit; signed
+ {
+	MAC64 = (unsigned long long)((long long)Read_Long(R[m]) * (long long)Read_Long(R[n])); //complicated signed 64 bit multiplication thingy
+	R[m] += 4;
+	R[n] += 4;
+	if (S == 1)
+	{
+		if ((long)MACH < 0) MACH |= 0xffff8000;
+		else MACH &= 0x00007fff;
+	}
+	PC += 2;
+ }
  
  
 	
-
-
-
-
- 
- 
- 
-
- 
-
-
-
-
-		
-	 
-		
 
