@@ -24,8 +24,13 @@
  
  unsigned long R[16];
  unsigned long SR, GBR, VBR, SGR, SPC, SSR;
- unsigned long MACH, MACL, PR;
+ unsigned long PR;
  unsigned long PC;
  unsigned long R_Bank[8];
  unsigned long T, M, S, Q;
+ unsigned long long = MAC64;
+ const unsigned long * MACH = ((char*)&MACH64 + 4);  //seems correct for a little endian system
+ const unsigned long * MACL = &MACH64;
+ 
+
 
