@@ -93,6 +93,21 @@
  void LDSMMACL(unsigned long m);                    //LDS.L @Rm+, MACL
  void LDSMPR(unsigned long m);                      //LDS.L @Rm+, PR
  void LDTLB();                                      //LDTLB
+ void MACL(unsigned long m, unsigned long n);       //MAC.L @Rm+, @Rn+
+ void MACW(unsigned long m, unsigned long n);       //MAC.W @Rm+, @Rn+
+ void MOV(unsigned long m, unsigned long n);        //MOV Rm, Rn
+ void MOVBL(unsigned long m, unsigned long n);      //MOV.B @Rm, Rn
+ void MOVWL(unsigned long m, unsigned long n);      //MOV.W @Rm, Rn
+ void MOVLL(unsigned long m, unsigned long n);      //MOV.L @Rm, Rn
+ void MOVBS(unsigned long m, unsigned long n);      //MOV.B Rm, @Rn
+ void MOVWS(unsigned long m, unsigned long n);      //MOV.W Rm, @Rn
+ void MOVLS(unsigned long m, unsigned long n);      //MOV.L Rm, @Rn
+ void MOVBM(unsigned long m, unsigned long n);      //MOV.B Rm, @-Rn
+ void MOVWM(unsigned long m, unsigned long n);      //MOV.W Rm, @-Rn
+ void MOVLM(unsigned long m, unsigned long n);      //MOV.L Rm, @-Rn
+ void MOVBP(unsigned long m, unsigned long n);      //MOV.B @Rm+, Rn
+ void MOVWP(unsigned long m, unsigned long n);      //MOV.W @Rm+, Rn
+ void MOVLP(unsigned long m, unsigned long n);      //MOV.L @Rm+, Rn
  
  //instruction code 
  void ADD(unsigned long m, unsigned long n) //ADD Rm, Rn  //add Rm and Rn into Rn; unsigned and signed data
@@ -390,17 +405,13 @@
  
  void DMULS (unsigned long m, unsigned long n)  //DMULS.L Rm, Rn  : 32 bit * 32 bit = 64 bit signed multiplication
  {
-	tmp64 = (unsigned long long)((long long)R[m] * (long long)R[n]);  //64 bit signed casting
-	*MACL = tmp64 & 0x00000000ffffffffLL;
-	*MACH = tmp64 >> 32;
+	MAC64 = (unsigned long long)((long long)R[m] * (long long)R[n]);  //64 bit signed casting
 	PC += 2;
  }
  
  void DMULU (unsigned long m, unsigned long m)  //DMULU.L Rm, Rn  : 32 bit * 32 bit = 64 bit unsigned multiplication
  {
-	tmp64 = (unsigned long long)R[m] * (unsigned long long)R[n];  //64 bit unsigned casting
-	*MACL = tmp64 & 0x00000000ffffffffLL;  //lowercase l looks to much like a 1 imho
-	*MACH = tmp64 >> 32;
+	MAC64 = (unsigned long long)R[m] * (unsigned long long)R[n];  //64 bit unsigned casting
 	PC += 2;
  }
  
@@ -590,11 +601,114 @@
 	R[n] += 4;
 	if (S == 1)
 	{
-		if ((long)MACH < 0) MACH |= 0xffff8000;
-		else MACH &= 0x00007fff;
+		if ((long)*MACH < 0) *MACH |= 0xffff8000;
+		else *MACH &= 0x00007fff;
 	}
 	PC += 2;
  }
+ 
+ void MACW (unsigned long m, unsigned long n)  //MAC.W @Rm+, @Rn+  : pop 16 bit * pop 16 bit = 64 bit if S == 0 else 32 bit; signed
+ {
+	MAC64 = (unsigned long long)((long long)Read_Word(R[m]) * (long long)Read_Word(R[n]));
+	if (S == 1 )
+	{
+		if (*MACH != tmp0 && (R[m] < 0 ^^ R[n] < 0))
+		{
+			*MACH |= 0x00000001;
+			*MACL = 0x80000000;
+		}
+		else if (*MACH != tmp0)
+		{
+			*MACH |= 0x00000001;
+			*MACL = 0x7fffffff;
+		}
+	}
+	R[m] += 2;
+	R[n] += 2;
+	PC += 2;
+ }
+ 
+ void MOV (unsigned long m, unsigned long n)  //MOV Rm, Rn  : quite simply Rm copied to Rn
+ {
+	R[n] = R[m];
+	PC += 2;
+ }
+ 
+ void MOVBS (unsigned long m, unsigned long n)  //MOV.B Rm, @Rn  : copy Rm into byte @Rn
+ {
+	Write_Byte(R[n], (unsigned char)R[m]);
+	PC += 2;
+ }
+ 
+ void MOVWS (unsigned long m, unsigned long n)  //MOV.W Rm, @Rn  : copy Rm into word @Rn
+ {
+	Write_Word(R[n], (unsigned short)R[m]);
+	PC += 2;
+ }
+ 
+ void MOVLS (unsigned long m, unsigned long n)  //MOV.L Rm, @Rn  : copy Rm into longword @Rn
+ {
+	Write_Long(R[n], R[m]);
+	PC += 2;
+ }
+ 
+ void MOVBL (unsigned long m, unsigned long n)  //MOV.B @Rm, Rn  : load byte @Rm into Rn
+ {
+	R[n] = (long)Read_Byte(R[m]);
+	PC += 2;
+ }
+ 
+ void MOVWL (unsigned long m, unsigned long n)  //MOV.W @Rm, Rn  : load word @Rm into Rn
+ {
+	R[n] = (long)Read_Word(R[m]);
+	PC += 2;
+ }
+ 
+ void MOVLL (unsigned long m, unsigned long n)  //MOV.L @Rm, Rn  : load long @Rm into Rn
+ {
+	R[n] = Read_Long(R[m);
+	PC += 2;
+ }
+ 
+ void MOVBM (unsigned long m, unsigned long n)  //MOV.B Rm, @-Rn  : push byte of Rm onto stack of Rn
+ {
+	Write_Byte(--R[n], (unsigned char)R[m]);  // i <3 optimization
+	PC += 2;
+ }
+ 
+ void MOVWM (unsigned long m, unsigned long n)  //MOV.W Rm, @-Rn  : push word of Rm onto stack of Rn
+ {
+	Write_Word(R[n] -= 2, (unsigned short)R[m]);
+	PC += 2;
+ }
+ 
+ void MOVLM (unsigned long m, unsigned long n)  //MOV.L Rm, @-Rn  : push long of Rm onto stack of Rn
+ {
+	Write_Long(R[n] -= 4, R[m]);
+	PC += 2;
+ }
+ 
+ void MOVBP (unsigned long m, unsigned long n)  //MOV.B @Rm+, Rn  : pop byte @Rm and into Rn
+ {
+	R[n] = (long)Read_Byte(R[m]);
+	++R[m];  //don't judge me
+	PC += 2;
+ }
+ 
+ void MOVWP (unsigned long m, unsigned long n)  //MOV.W @Rm+, Rn  : pop word @Rm and into Rn
+ {
+	R[n] = (long)Read_Word(R[m]);
+	R[m] += 2;
+	PC += 2;
+ }
+ 
+ void MOVLP (unsigned long m, unsigned long n)  //MOV.L @Rm+, Rn  : pop long @Rm and into Rn
+ {
+	R[n] = Read_Long(R[m]);
+	R[m] += 4;
+	PC += 2;
+ }
+ 
  
  
 	
