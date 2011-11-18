@@ -117,6 +117,9 @@
  void MOVI(unsigned long m, unsigned long n);       //MOV #imm, Rn
  void MOVWI(unsigned long d, unsigned long n);      //MOV.W @(disp, PC), Rn
  void MOVLI(unsigned long d, unsigned long n);      //MOV.L @(disp, PC), Rn
+ void MOVBLG(unsigned long d);                      //MOV.B @(disp, GBR), R0
+ void MOVWLG(unsigned long d);                      //MOV.W @(disp, GBR), R0
+ void MOVLLG(unsigned long d);                      //MOV.L @(disp, GBR), R0
  
  //instruction code 
  void ADD(unsigned long m, unsigned long n) //ADD Rm, Rn  //add Rm and Rn into Rn; unsigned and signed data
@@ -764,15 +767,31 @@
  
  void MOVWI (unsigned long d, unsigned long n)  //MOV.W @(disp, PC), Rn  : copy word @((8 bit imm disp) * 2 + PC) into Rn; sign extended
  {
-	R[n] = (short)Read_Word(PC + 4 + ((long)d << 1));
+	R[n] = (long)Read_Word(PC + 4 + (d << 1));
 	PC += 2;
  }
  
  void MOVLI (unsigned long d, unsigned long n)  //MOV.L @(disp, PC), Rn  : copy long @((8 bit imm disp) * 4 + PC) into Rn
  {
-	R[n] = Read_Long((PC & 0xfffffffc) + 4 + ((long)d << 2));
+	R[n] = Read_Long((PC & 0xfffffffc) + 4 + (d << 2));
 	PC += 2;
  }
  
-	
+ void MOVBLG (unsigned long d)  //MOV.B @(disp, GBR), R0  : load byte @(disp + GBR) into R0; sign extended
+ {
+	*R = (long)Read_Byte(GBR + d);  //smart ass *R optimization again
+	PC += 2;
+ }
+ 
+ void MOVWLG (unsigned long d)  //MOV.W @(disp, GBR), R0  : load word @(disp + GBR) into R0; sign extended 
+ {
+	*R = (long)Read_Word((GBR & 0xfffffffe) + (d << 1);
+	PC += 2;
+ }
+ 
+ void MOVLLG (unsigned long d)  //MOV.L @(disp, GBR), R0  : load long @(disp + GBR) into R0
+ {
+	*R = Read_Long((GBR & 0xfffffffc) + (d << 2);
+	PC += 2;
+ }
 
