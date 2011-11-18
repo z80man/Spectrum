@@ -108,6 +108,15 @@
  void MOVBP(unsigned long m, unsigned long n);      //MOV.B @Rm+, Rn
  void MOVWP(unsigned long m, unsigned long n);      //MOV.W @Rm+, Rn
  void MOVLP(unsigned long m, unsigned long n);      //MOV.L @Rm+, Rn
+ void MOVBS0(unsigned long m, unsigned long n);     //MOV.B Rm, @(R0, Rn)
+ void MOVWS0(unsigned long m, unsigned long n);     //MOV.W Rm, @(R0, Rn)
+ void MOVLS0(unsigned long m, unsigned long n);     //MOV.L Rm, @(R0, Rn)
+ void MOVBL0(unsigned long m, unsigned long n);     //MOV.B @(R0, Rn), Rm
+ void MOVWL0(unsigned long m, unsigned long n);     //MOV.W @(R0, Rn), Rm
+ void MOVLL0(unsigned long m, unsigned long n);     //MOV.L @(R0, Rn), Rm
+ void MOVI(unsigned long m, unsigned long n);       //MOV #imm, Rn
+ void MOVWI(unsigned long d, unsigned long n);      //MOV.W @(disp, PC), Rn
+ void MOVLI(unsigned long d, unsigned long n);      //MOV.L @(disp, PC), Rn
  
  //instruction code 
  void ADD(unsigned long m, unsigned long n) //ADD Rm, Rn  //add Rm and Rn into Rn; unsigned and signed data
@@ -652,13 +661,13 @@
 	PC += 2;
  }
  
- void MOVBL (unsigned long m, unsigned long n)  //MOV.B @Rm, Rn  : load byte @Rm into Rn
+ void MOVBL (unsigned long m, unsigned long n)  //MOV.B @Rm, Rn  : load byte @Rm into Rn; sign extension
  {
 	R[n] = (long)Read_Byte(R[m]);
 	PC += 2;
  }
  
- void MOVWL (unsigned long m, unsigned long n)  //MOV.W @Rm, Rn  : load word @Rm into Rn
+ void MOVWL (unsigned long m, unsigned long n)  //MOV.W @Rm, Rn  : load word @Rm into Rn; sign extension
  {
 	R[n] = (long)Read_Word(R[m]);
 	PC += 2;
@@ -688,28 +697,82 @@
 	PC += 2;
  }
  
- void MOVBP (unsigned long m, unsigned long n)  //MOV.B @Rm+, Rn  : pop byte @Rm and into Rn
+ void MOVBP (unsigned long m, unsigned long n)  //MOV.B @Rm+, Rn  : pop byte @Rm and into Rn; sign extension
  {
-	R[n] = (long)Read_Byte(R[m]);
 	++R[m];  //don't judge me
+	R[n] = (long)Read_Byte(R[m] - 1);  //strange optimization but it removes any branch statements
 	PC += 2;
  }
  
- void MOVWP (unsigned long m, unsigned long n)  //MOV.W @Rm+, Rn  : pop word @Rm and into Rn
+ void MOVWP (unsigned long m, unsigned long n)  //MOV.W @Rm+, Rn  : pop word @Rm and into Rn; sign extension
  {
-	R[n] = (long)Read_Word(R[m]);
 	R[m] += 2;
+	R[n] = (long)Read_Word(R[m] - 2);
 	PC += 2;
  }
  
  void MOVLP (unsigned long m, unsigned long n)  //MOV.L @Rm+, Rn  : pop long @Rm and into Rn
  {
-	R[n] = Read_Long(R[m]);
 	R[m] += 4;
+	R[n] = Read_Long(R[m] - 4);
 	PC += 2;
  }
  
+ void MOVBS0 (unsigned long m, unsigned long n)  //MOV.B Rm, @(R0, Rn)  : copy Rm into byte @(R0 + Rn)
+ {
+	Write_Byte(R[n] + *R, (unsigned char)R[m]);
+	/* yes it's ugly but *R means R[0], maybe I should change it back
+	 * but if I do I won't look like a super hacker anymore :( */
+	PC += 2;
+ }
  
+ void MOVWS0 (unsigned long m, unsigned long n)  //MOV.W Rm, @(R0, Rn)  : copy Rm into word @(R0 + Rn)
+ {
+	Write_Word(R[n] + *R, (unsigned short)R[m]);
+	PC += 2;
+ }
+ 
+ void MOVLS0 (unsigned long m, unsigned long n)  //MOV.L Rm, @(R0, Rn)  : copy Rm into long @(R0 + Rn)
+ {
+	Write_Long(R[n] + *R, R[m]);
+	PC += 2;
+ }
+ 
+ void MOVBL0 (unsigned long m, unsigned long n)  //MOV.B @(R0, Rm), Rn  : load byte @(R0 + Rn) into Rn
+ {
+	R[n] = (long)Read_Byte(R[m] + *R);
+	PC += 2;
+ }
+ 
+ void MOVWL0 (unsigned long m, unsigned long n)  //MOV.W @(R0, Rm), Rn  : load word @(R0 + Rn) into Rn
+ {
+	R[n] = (long)Read_Word(R[m] + *R);
+	PC += 2;
+ }
+ 
+ void MOVLL0 (unsigned long m, unsigned long n)  //MOV.L @(R0, Rm), Rn  : load long @(R0 + Rn) into Rn
+ {
+	R[n] = Read_Long(R[m] + *R);
+	PC += 2;
+ }
+ 
+ void MOVI (unsigned long i, unsigned long n)  //MOV #imm, Rn  : load 8 bit immediate into Rn; sign extended
+ {
+	R[n] = (long)i;
+	PC += 2;
+ }
+ 
+ void MOVWI (unsigned long d, unsigned long n)  //MOV.W @(disp, PC), Rn  : copy word @((8 bit imm disp) * 2 + PC) into Rn; sign extended
+ {
+	R[n] = (short)Read_Word(PC + 4 + ((long)d << 1));
+	PC += 2;
+ }
+ 
+ void MOVLI (unsigned long d, unsigned long n)  //MOV.L @(disp, PC), Rn  : copy long @((8 bit imm disp) * 4 + PC) into Rn
+ {
+	R[n] = Read_Long((PC & 0xfffffffc) + 4 + ((long)d << 2));
+	PC += 2;
+ }
  
 	
 
